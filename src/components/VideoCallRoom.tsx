@@ -225,7 +225,7 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
               <div className="flex items-center justify-center gap-2">
                 <p className="text-white text-sm font-semibold">{currentMatch.username}</p>
                 {remoteUserTier > 0 && (
-                  <SubscriptionBadge tier={remoteUserTier} size="sm" showLabel animated />
+                  <SubscriptionBadge tier={remoteUserTier as TierNumber} size="sm" showLabel animated />
                 )}
               </div>
               <p className="text-white/50 text-[10px] text-center capitalize mt-0.5">
