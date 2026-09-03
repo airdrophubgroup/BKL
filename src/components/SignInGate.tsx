@@ -89,6 +89,16 @@ export default function SignInGate() {
         <p className="text-white/20 text-[10px]">
           You&apos;ll be asked to sign a message to verify your wallet.
         </p>
+
+        <p className="text-white/15 text-[9px]">
+          Need help?{' '}
+          <a
+            href="mailto:airdrophubgroup@gmail.com?subject=Beediyo%20Kall%20—%20Support"
+            className="text-accent-400/70 underline underline-offset-2"
+          >
+            airdrophubgroup@gmail.com
+          </a>
+        </p>
       </motion.div>
     </div>
   );

@@ -567,6 +567,16 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <p className="text-center text-white/20 text-[9px] mt-3">
+          Need help?{' '}
+          <a
+            href="mailto:airdrophubgroup@gmail.com?subject=Beediyo%20Kall%20—%20Support"
+            className="text-accent-400/60 underline underline-offset-2"
+          >
+            airdrophubgroup@gmail.com
+          </a>
+        </p>
       </div>
     </motion.div>
   );
