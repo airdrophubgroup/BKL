@@ -29,7 +29,7 @@ interface AuditEntry {
 }
 
 // In-memory audit log (last 1000 entries)
-const auditLog: AuditEntry[] = [];
+const auditEntries: AuditEntry[] = [];
 const MAX_LOG_SIZE = 1000;
 
 /**
@@ -48,9 +48,9 @@ export function auditLog(
   };
 
   // Add to in-memory log
-  auditLog.push(entry);
-  if (auditLog.length > MAX_LOG_SIZE) {
-    auditLog.shift();
+  auditEntries.push(entry);
+  if (auditEntries.length > MAX_LOG_SIZE) {
+    auditEntries.shift();
   }
 
   // Console output for monitoring
@@ -65,15 +65,15 @@ export function auditLog(
  * Get recent audit entries (for admin dashboard).
  */
 export function getRecentLogs(limit: number = 100): AuditEntry[] {
-  return auditLog.slice(-limit);
+  return auditEntries.slice(-limit);
 }
 
 /**
  * Get logs for a specific user.
  */
 export function getUserLogs(userId: string, limit: number = 50): AuditEntry[] {
-  return auditLog
-    .filter((e) => e.userId === userId || e.wallet === e.wallet)
+  return auditEntries
+    .filter((e) => e.userId === userId || e.wallet === userId)
     .slice(-limit);
 }
 
