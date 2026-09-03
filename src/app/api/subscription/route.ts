@@ -194,18 +194,28 @@ export async function POST(req: NextRequest) {
 
   if (subError) {
     console.error('[subscription] subscription insert failed:', subError);
+    // Compensate: remove the recorded payment so the user can retry the same
+    // transaction. Without this, a partial failure would leave them charged
+    // but with no pass AND blocked by replay protection (409).
+    await supabase.from('bk_payments').delete().eq('tx_hash', txId);
     return NextResponse.json({ error: 'Failed to create subscription' }, { status: 500 });
   }
 
-  // ---- Award permanent BKL tokens (never expire) ----
-  const { error: bklError } = await supabase.from('bk_bkl_tokens').insert({
-    user_id: profile.id,
-    amount: expectedPrice,
-    source: 'subscription',
-    tx_hash: txId,
-  });
+  // ---- Award permanent BKL tokens (never expire) — with one retry ----
+  const bklInsert = () =>
+    supabase.from('bk_bkl_tokens').insert({
+      user_id: profile.id,
+      amount: expectedPrice,
+      source: 'subscription',
+      tx_hash: txId,
+    });
+  let { error: bklError } = await bklInsert();
   if (bklError) {
-    console.error('[subscription] BKL award failed:', bklError);
+    console.error('[subscription] BKL award failed (retrying once):', bklError);
+    const retry = await bklInsert();
+    if (retry.error) {
+      console.error('[subscription] BKL award failed after retry:', retry.error);
+    }
   }
 
   const signature = await generateRequestSignature(

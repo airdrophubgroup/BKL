@@ -245,6 +245,30 @@ def main():
         s, _, _ = http("POST", f"{BASE}/api/report", {"reportedId": uuid(5), "reason": "x"}, ck(wallet(1)))
         check("G4 report short reason 400", s == 400, f"{s}")
 
+        # ---------- expiry + free-limit enforcement ----------
+        now_u = time.time()
+        code, _, _ = http("POST", f"{REST}/rest/v1/bk_subscriptions",
+                          [{"user_id": uuid(3), "tier": 3,
+                            "starts_at": time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime(now_u - 2 * 86400)),
+                            "expires_at": time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime(now_u - 3600))}],
+                          {**rh(), "Prefer": "resolution=merge-duplicates,return=minimal"})
+        check("seed expired sub", code in (200, 201, 204), f"{code}")
+        s, raw, _ = http("GET", f"{BASE}/api/subscription", headers=ck(wallet(3)))
+        d = json.loads(raw)
+        check("I1 expired sub NOT returned", s == 200 and d.get("subscription") is None, f"{d}")
+        s, raw, _ = http("GET", f"{BASE}/api/user-tier?userId=" + uuid(3), headers=ck(wallet(1)))
+        d = json.loads(raw)
+        check("I2 expired user-tier 0", s == 200 and d.get("tier") == 0)
+        today = time.strftime("%Y-%m-%d", time.gmtime())
+        code, _, _ = http("POST", f"{REST}/rest/v1/bk_daily_usage",
+                          [{"user_id": uuid(5), "usage_date": today, "seconds_used": 60}],
+                          {**rh(), "Prefer": "resolution=merge-duplicates,return=minimal"})
+        check("seed exhausted usage", code in (200, 201, 204), f"{code}")
+        s, raw, _ = http("POST", f"{BASE}/api/match",
+                         {"excludeId": uuid(5), "tier": 0, "filters": {}}, ck(wallet(5)))
+        check("I3 exhausted free user cannot match 403",
+              s == 403 and b"free time" in raw.lower(), f"{s} {raw[:80]}")
+
         # ---------- bkl / leaderboard ----------
         s, raw, _ = http("GET", f"{BASE}/api/bkl-balance", headers=ck(wallet(6)))
         d = json.loads(raw)

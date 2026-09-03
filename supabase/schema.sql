@@ -49,6 +49,11 @@ CREATE TABLE IF NOT EXISTS bk_payments (
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- DB-level replay protection: one transaction id may be redeemed once
+CREATE UNIQUE INDEX IF NOT EXISTS uq_bk_payments_tx
+  ON bk_payments (tx_hash)
+  WHERE tx_hash IS NOT NULL;
+
 -- 4. bk_reports — for moderation
 CREATE TABLE IF NOT EXISTS bk_reports (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
