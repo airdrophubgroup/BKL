@@ -6,7 +6,7 @@ import GlassCard from './GlassCard';
 import { Shield, Eye, Lock, Server, Check, ChevronRight, AlertCircle } from 'lucide-react';
 
 interface PrivacyConsentProps {
-  onAccept: () => Promise<void>;
+  onAccept: () => Promise<boolean>;
 }
 
 const CONSENT_ITEMS = [
@@ -45,7 +45,10 @@ export default function PrivacyConsent({ onAccept }: PrivacyConsentProps) {
     setSubmitting(true);
     setError('');
     try {
-      await onAccept();
+      const ok = await onAccept();
+      if (!ok) {
+        setError('Could not save your consent. Please try again.');
+      }
     } catch {
       setError('Something went wrong. Please try again.');
     }
