@@ -1,7 +1,7 @@
 {
   "name": "Beediyo Kall",
   "short_name": "Beediyo Kall",
-  "description": "Random Video Chat — Connect with people worldwide on World App",
+  "description": "Random Video Chat — Meet new people around the world",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0f1f",

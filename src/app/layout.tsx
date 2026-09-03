@@ -9,8 +9,11 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   themeColor: '#0a0f1f',
   icons: {
-    icon: '/icon.svg',
-    apple: '/icon.svg',
+    icon: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: '/icon-192.png',
   },
   appleWebApp: {
     capable: true,

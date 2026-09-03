@@ -171,7 +171,10 @@ export default function PrivacyConsent({ onAccept }: PrivacyConsentProps) {
         </motion.button>
 
         <p className="text-white/15 text-[9px] text-center leading-relaxed">
-          By continuing you agree to our Terms of Service and Privacy Policy.
+          By continuing you agree to our
+          <a href="/terms" className="text-accent-400/70 underline underline-offset-2 mx-0.5">Terms of Service</a>
+          and
+          <a href="/privacy" className="text-accent-400/70 underline underline-offset-2 mx-0.5">Privacy Policy</a>.
           <br />
           Contact: airdrophubgroup@gmail.com
         </p>

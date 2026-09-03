@@ -72,7 +72,7 @@ export default function BklTokenBalance({ userId, showDetailed = false }: BklTok
 
           <div className="flex-1">
             <p className="text-white/40 text-[10px] uppercase tracking-widest font-medium">
-              BKL Tokens
+              BKL Reward Points
             </p>
             <div className="flex items-baseline gap-1.5">
               <motion.span
@@ -108,14 +108,17 @@ export default function BklTokenBalance({ userId, showDetailed = false }: BklTok
             className="mt-3 pt-3 border-t border-white/[0.06]"
           >
             <p className="text-white/30 text-[10px] uppercase tracking-wider mb-2">
-              These tokens are permanently yours
+              Yours forever — never expire
             </p>
             <div className="flex items-center gap-1.5 text-[11px] text-white/50">
               <Coins className="w-3.5 h-3.5 text-accent-400" />
               <span>
-                Earned from subscription purchases — never expire
+                Earned with your passes — never expire
               </span>
             </div>
+            <p className="mt-1.5 text-white/20 text-[9px]">
+              In-app reward points only · no cash value
+            </p>
           </motion.div>
         )}
       </motion.div>

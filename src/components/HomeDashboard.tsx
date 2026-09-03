@@ -451,7 +451,7 @@ export default function HomeDashboard({
                 </span>
               ))}
               <span className="px-2 py-0.5 rounded-md bg-accent-500/10 text-[8px] text-accent-400 uppercase tracking-wider font-bold">
-                +{TIERS[tier].bklReward} BKL
+                +{TIERS[tier].bklReward} BKL pts
               </span>
             </div>
           </GlassCard>

@@ -170,7 +170,7 @@ export default function SubscriptionPlans({
                     transition={{ delay: 0.3 + i * 0.1 }}
                   >
                     <span className="text-sm font-black bg-gradient-to-br from-accent-300 to-indigo-400 bg-clip-text text-transparent">B</span>
-                    <span className="text-accent-400 text-xs font-bold">+{tier.bklReward} BKL</span>
+                    <span className="text-accent-400 text-xs font-bold">+{tier.bklReward} pts</span>
                   </motion.div>
                 </div>
 
@@ -184,10 +184,10 @@ export default function SubscriptionPlans({
                       <span className="capitalize">{f.replace(/_/g, ' ')}</span>
                     </li>
                   ))}
-                  {/* BKL Token reward */}
+                  {/* BKL reward points (in-app loyalty, not a token sale) */}
                   <li className="flex items-center gap-2 text-sm text-white/60">
                     <Check className="w-4 h-4 text-accent-400 flex-shrink-0" />
-                    <span>Earn <span className="text-accent-400 font-bold">{tier.bklReward} BKL</span> tokens (permanent)</span>
+                    <span>Includes <span className="text-accent-400 font-bold">{tier.bklReward} BKL</span> reward points (never expire)</span>
                   </li>
                 </ul>
 
