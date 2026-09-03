@@ -29,7 +29,9 @@ export async function GET(req: NextRequest) {
   // Premium = unlimited
   const sub = await verifySubscription(profile.id);
   if (sub.valid) {
-    return NextResponse.json({ secondsUsed: 0, remaining: Infinity, premium: true });
+    // Premium = unlimited. Keep remaining numeric (Infinity would become
+    // null in JSON); the client keys off `premium` for the unlimited state.
+    return NextResponse.json({ secondsUsed: 0, remaining: 60, premium: true });
   }
 
   const { data: usage } = await supabase
