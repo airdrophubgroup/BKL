@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Flag,
   Settings,
+  Users,
   X,
 } from 'lucide-react';
 
@@ -56,6 +57,11 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
   // "Connected!" duo burst — briefly shows BOTH users' gender avatars meeting.
   const [matchBurst, setMatchBurst] = useState(false);
   const burstTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Polite match search — auto-retry a few times, then stop and ask the user
+  // to tap Next (review requirement: no infinite loading states).
+  const [outOfMatches, setOutOfMatches] = useState(false);
+  const searchAttempts = useRef(0);
 
   useEffect(() => () => {
     if (burstTimer.current) clearTimeout(burstTimer.current);
@@ -155,13 +161,17 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
     return () => clearInterval(timer);
   }, [hasActiveSub, status, logUsage]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Find a random match
-  const findNewMatch = useCallback(async () => {
+  // Find a random match (manual=true when the user taps Next — resets retries)
+  const findNewMatch = useCallback(async (manual = false) => {
     setStatus('searching');
     setCurrentMatch(null);
     setRemoteUserTier(0);
     setRemoteStreamActive(false);
     setMatchBurst(false);
+    if (manual) {
+      searchAttempts.current = 0;
+      setOutOfMatches(false);
+    }
     if (burstTimer.current) clearTimeout(burstTimer.current);
 
     // Simulate a brief search delay
@@ -183,19 +193,27 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
       }
 
       setStatus('matched');
+      searchAttempts.current = 0;
+      setOutOfMatches(false);
 
       // Short "Connected!" flash showing both gender avatars meeting
       setMatchBurst(true);
       if (burstTimer.current) clearTimeout(burstTimer.current);
       burstTimer.current = setTimeout(() => setMatchBurst(false), 2800);
     } else {
-      // No matches found, retry
-      setTimeout(() => findNewMatch(), 2000);
+      // No candidates right now — retry a few times, then stop politely so
+      // the app never spins forever. The user can tap Next to try again.
+      searchAttempts.current += 1;
+      if (searchAttempts.current < 4) {
+        setTimeout(() => findNewMatch(), 2500);
+      } else {
+        setOutOfMatches(true);
+      }
     }
   }, [profile.id, tier, filters]);
 
   const handleNext = () => {
-    findNewMatch();
+    findNewMatch(true);
   };
 
   const handleEnd = () => {
@@ -291,10 +309,24 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center space-y-3">
               {status === 'searching' ? (
-                <>
-                  <div className="w-16 h-16 mx-auto border-4 border-accent-500/30 border-t-accent-500 rounded-full animate-spin" />
-                  <p className="text-white/60 text-sm">Finding someone...</p>
-                </>
+                outOfMatches ? (
+                  <div className="text-center space-y-3 px-8">
+                    <div className="w-14 h-14 mx-auto rounded-full bg-accent-600/15 border border-accent-500/20 flex items-center justify-center">
+                      <Users className="w-6 h-6 text-accent-400" />
+                    </div>
+                    <p className="text-white/70 text-sm font-medium">
+                      No one online right now
+                    </p>
+                    <p className="text-white/40 text-xs">
+                      Tap Next to try again in a moment
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="w-16 h-16 mx-auto border-4 border-accent-500/30 border-t-accent-500 rounded-full animate-spin" />
+                    <p className="text-white/60 text-sm">Finding someone...</p>
+                  </>
+                )
               ) : status === 'connecting' ? (
                 <>
                   <Video className="w-10 h-10 mx-auto text-white/30" />

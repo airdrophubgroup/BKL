@@ -164,6 +164,10 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                   </p>
                 </div>
 
+                <p className="text-[10px] text-white/25 leading-relaxed px-2">
+                  18+ only · Be kind and respectful — calls can be reported by anyone at any time
+                </p>
+
                 <p className="text-white/25 text-xs leading-relaxed">
                   We need a few details to set up your profile.
                   <br />

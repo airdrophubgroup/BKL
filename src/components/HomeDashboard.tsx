@@ -268,10 +268,10 @@ function DemoSimulation() {
           )}
         </button>
 
-        {/* Demo badge */}
+        {/* Explainer badge (the animation shows how matching works) */}
         <div className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 rounded-full bg-black/30 backdrop-blur-md border border-white/10">
           <span className="text-[8px]">🎬</span>
-          <span className="text-[8px] text-white/50 font-medium">Demo</span>
+          <span className="text-[8px] text-white/50 font-medium">How it works</span>
         </div>
       </div>
     </motion.div>
