@@ -52,6 +52,14 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
   const [remoteUserTier, setRemoteUserTier] = useState<TierNumber | 0>(0);
   // Becomes true once the peer's real video stream starts playing (production WebRTC).
   const [remoteStreamActive, setRemoteStreamActive] = useState(false);
+
+  // "Connected!" duo burst — briefly shows BOTH users' gender avatars meeting.
+  const [matchBurst, setMatchBurst] = useState(false);
+  const burstTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (burstTimer.current) clearTimeout(burstTimer.current);
+  }, []);
   const [showFilters, setShowFilters] = useState(false);
   const [showReport, setShowReport] = useState(false);
 
@@ -72,26 +80,45 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
     }
   }, [hasActiveSub, dailyRemaining]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Initialize local camera
+  // Initialize local camera. If the user denies access we do NOT block the
+  // experience — the call continues in avatar mode, where each participant is
+  // represented by their gender-matched animated avatar (own + remote).
   useEffect(() => {
-    let stream: MediaStream;
-    navigator.mediaDevices
-      .getUserMedia({ video: true, audio: true })
-      .then((s) => {
-        stream = s;
-        setLocalStream(s);
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = s;
+    let stream: MediaStream | undefined;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        // Full video + audio
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      } catch {
+        try {
+          // Video only (mic denied)
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          setAudioEnabled(false);
+        } catch {
+          // Avatar mode — no camera and no mic. Both users see gender avatars.
+          setVideoEnabled(false);
+          setAudioEnabled(false);
         }
-        setStatus('searching');
-        findNewMatch();
-      })
-      .catch((err) => {
-        console.error('Camera access denied:', err);
-        setStatus('ended');
-      });
+      }
+
+      if (cancelled) {
+        stream?.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      if (stream) {
+        setLocalStream(stream);
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+        }
+      }
+      setStatus('searching');
+      findNewMatch();
+    })();
 
     return () => {
+      cancelled = true;
       stream?.getTracks().forEach((t) => t.stop());
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -134,6 +161,8 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
     setCurrentMatch(null);
     setRemoteUserTier(0);
     setRemoteStreamActive(false);
+    setMatchBurst(false);
+    if (burstTimer.current) clearTimeout(burstTimer.current);
 
     // Simulate a brief search delay
     await new Promise((r) => setTimeout(r, 1500 + Math.random() * 2000));
@@ -154,6 +183,11 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
       }
 
       setStatus('matched');
+
+      // Short "Connected!" flash showing both gender avatars meeting
+      setMatchBurst(true);
+      if (burstTimer.current) clearTimeout(burstTimer.current);
+      burstTimer.current = setTimeout(() => setMatchBurst(false), 2800);
     } else {
       // No matches found, retry
       setTimeout(() => findNewMatch(), 2000);
@@ -179,7 +213,9 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
 
   const toggleAudio = () => {
     if (localStream) {
-      localStream.getAudioTracks().forEach((t) => (t.enabled = !audioEnabled));
+      const tracks = localStream.getAudioTracks();
+      if (tracks.length === 0) return; // mic was never granted
+      tracks.forEach((t) => (t.enabled = !audioEnabled));
       setAudioEnabled(!audioEnabled);
     }
   };
@@ -296,12 +332,15 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
                 size="2xl"
                 animate
                 online
+                showGenderChip
               />
             </div>
             <p className="relative text-white text-lg font-bold mt-5 drop-shadow-lg">
               {currentMatch.username}
             </p>
-            <p className="relative text-white/50 text-xs mt-1">
+            <p className="relative text-white/50 text-xs mt-1 capitalize">
+              {currentMatch.gender !== 'any' ? currentMatch.gender : ''}
+              {currentMatch.gender !== 'any' ? ' · ' : ''}
               {currentMatch.country !== 'ZZ' ? currentMatch.country : 'Global'} · Age {currentMatch.age}
             </p>
             <div className="relative flex items-center gap-2 mt-4 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10">
@@ -372,12 +411,13 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
         >
           {audioEnabled ? <Mic className="w-2.5 h-2.5" /> : <MicOff className="w-2.5 h-2.5" />}
           <span className="text-[7px] font-bold uppercase tracking-wider">
-            {!audioEnabled ? 'Muted' : speaking ? 'Live' : 'Mic'}
+            {!localStream ? 'Off' : !audioEnabled ? 'Muted' : speaking ? 'Live' : 'Mic'}
           </span>
         </div>
 
-        {/* Live voice-level equalizer */}
-        <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex items-end gap-[3px] px-1.5 py-1 rounded-md bg-black/45 backdrop-blur-md">
+        {/* Live voice-level equalizer + You tag */}
+        <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/45 backdrop-blur-md">
+          <span className="text-[6px] font-bold uppercase tracking-wider text-white/50 pr-0.5">You</span>
           {[0.35, 0.65, 0.95, 0.6, 0.3].map((mult, i) => {
             const h = !audioEnabled
               ? 2
@@ -394,6 +434,85 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
           })}
         </div>
       </div>
+
+      {/* Connected! duo burst — remote avatar + own avatar shown together */}
+      <AnimatePresence>
+        {matchBurst && currentMatch && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setMatchBurst(false)}
+            className="absolute inset-0 z-20 flex items-center justify-center bg-midnight-950/85 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ scale: 0.82, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 180, damping: 18 }}
+              className="flex flex-col items-center px-6"
+            >
+              <p className="text-white/40 text-[10px] uppercase tracking-[0.25em] mb-5 font-medium">
+                It's a match
+              </p>
+              <div className="flex items-center justify-center gap-5">
+                {/* Remote user (their gender avatar) */}
+                <motion.div
+                  initial={{ opacity: 0, x: -24 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="flex flex-col items-center gap-1.5"
+                >
+                  <UserAvatar
+                    gender={currentMatch.gender}
+                    src={currentMatch.avatar_url}
+                    size="xl"
+                    animate
+                    online
+                    showGenderChip
+                  />
+                  <span className="text-white/80 text-[10px] font-semibold max-w-[88px] truncate">
+                    {currentMatch.username}
+                  </span>
+                </motion.div>
+
+                {/* Heartbeat divider */}
+                <motion.div
+                  animate={{ scale: [1, 1.25, 1] }}
+                  transition={{ duration: 0.8, repeat: Infinity, repeatDelay: 0.35 }}
+                >
+                  <span className="text-2xl drop-shadow-lg">💜</span>
+                </motion.div>
+
+                {/* You (your gender avatar) */}
+                <motion.div
+                  initial={{ opacity: 0, x: 24 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="flex flex-col items-center gap-1.5"
+                >
+                  <UserAvatar
+                    gender={profile.gender}
+                    src={profile.avatar_url}
+                    size="xl"
+                    animate
+                    online
+                    showGenderChip
+                  />
+                  <span className="text-white/80 text-[10px] font-semibold max-w-[88px] truncate">
+                    You
+                  </span>
+                </motion.div>
+              </div>
+
+              <p className="mt-6 text-white text-base font-bold">Connected!</p>
+              <p className="text-white/45 text-[11px] mt-1 text-center">
+                Say hi to {currentMatch.username} 👋
+              </p>
+              <div className="mt-5 w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Filter panel (tier >= 2 only) */}
       <AnimatePresence>
@@ -590,8 +709,13 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
           {/* Audio toggle */}
           <button
             onClick={toggleAudio}
+            disabled={!localStream}
             className={`w-12 h-12 rounded-full backdrop-blur-md flex items-center justify-center transition-all ${
-              audioEnabled ? 'bg-white/10 text-white' : 'bg-red-500/30 text-red-400'
+              !localStream
+                ? 'bg-white/[0.04] text-white/25 cursor-not-allowed'
+                : audioEnabled
+                ? 'bg-white/10 text-white'
+                : 'bg-red-500/30 text-red-400'
             }`}
           >
             {audioEnabled ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
@@ -608,8 +732,13 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
           {/* Video toggle */}
           <button
             onClick={toggleVideo}
+            disabled={!localStream}
             className={`w-12 h-12 rounded-full backdrop-blur-md flex items-center justify-center transition-all ${
-              videoEnabled ? 'bg-white/10 text-white' : 'bg-red-500/30 text-red-400'
+              !localStream
+                ? 'bg-white/[0.04] text-white/25 cursor-not-allowed'
+                : videoEnabled
+                ? 'bg-white/10 text-white'
+                : 'bg-red-500/30 text-red-400'
             }`}
           >
             {videoEnabled ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
