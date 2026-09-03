@@ -35,7 +35,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ isValid: false, error: 'Invalid signature' }, { status: 400 });
     }
 
-    const wallet = verification.siweMessageData.address;
+    const wallet = verification.siweMessageData?.address;
+    if (!wallet) {
+      return NextResponse.json({ isValid: false, error: 'No address in signature' }, { status: 400 });
+    }
 
     const res = NextResponse.json({ isValid: true, wallet });
     return setSessionCookie(res, wallet);
