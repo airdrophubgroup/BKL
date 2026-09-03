@@ -52,6 +52,15 @@ export default function HomePage() {
     );
   }
 
+  // Safety net: profile must exist before any gated screen renders
+  if (!profile) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <p className="text-white/40 text-sm">Loading your profile...</p>
+      </div>
+    );
+  }
+
   // Onboarding gate
   if (!profile.onboarded) {
     return <OnboardingModal onComplete={completeOnboarding} />;
