@@ -1,18 +1,20 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { getSessionWallet } from '@/lib/session';
+
+const DEV_MODE = process.env.NEXT_PUBLIC_ALLOW_DEV_MODE === 'true';
 
 /**
- * Generate a unique nonce for MiniKit.pay() transactions.
- * 
- * This nonce is used as a "reference" in the pay command.
- * It helps correlate client payment requests with backend confirmation.
- * 
- * The nonce should be stored in your database with:
- *   - user_id (who initiated the payment)
- *   - tier (what they're buying)
- *   - status: 'pending' → 'confirmed' / 'failed'
+ * POST /api/generate-nonce
+ * Returns a unique reference id for a MiniKit.pay() transaction.
+ * Requires an authenticated session (prevents anonymous nonce spam).
  */
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const wallet = await getSessionWallet(req);
+  if (!wallet && !DEV_MODE) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+
   const nonce = crypto.randomUUID();
 
   // In production, store this nonce in your database:

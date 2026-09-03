@@ -1,4 +1,14 @@
 /** @type {import('next').NextConfig} */
+
+const isProd = process.env.NODE_ENV === 'production';
+
+// Next.js injects inline bootstrap scripts; in production we avoid
+// 'unsafe-eval'. 'unsafe-inline' is required by Next 14 unless you set up
+// CSP nonces — adding a nonce middleware is on the roadmap.
+const scriptSrc = isProd
+  ? "'self' 'unsafe-inline'"
+  : "'self' 'unsafe-eval' 'unsafe-inline'";
+
 const nextConfig = {
   reactStrictMode: true,
 
@@ -21,11 +31,13 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+              `script-src ${scriptSrc}`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co http://localhost:3001 ws://localhost:3001",
+              // No browser-side Supabase calls anymore; keep World domains
+              // allowed for future SDK features + local signaling in dev
+              "connect-src 'self' https://*.worldcoin.org https://*.world.org http://localhost:3001 ws://localhost:3001",
               "media-src 'self' blob: data:",
               "frame-ancestors 'none'",
               "base-uri 'self'",
