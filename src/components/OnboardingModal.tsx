@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlassCard from './GlassCard';
+import UserAvatar from './UserAvatar';
 import {
   MapPin,
   Calendar,
@@ -381,6 +382,23 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                     Step 3 of 3 · Used for matching filters
                   </p>
                 </div>
+
+                {/* Live avatar preview matching the selected gender */}
+                <AnimatePresence>
+                  {gender && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="flex flex-col items-center gap-1.5"
+                    >
+                      <UserAvatar gender={gender} size="xl" animate online showGenderChip />
+                      <p className="text-[10px] text-white/40 font-medium">
+                        This is how you'll appear to others
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Gender cards */}
                 <div className="grid grid-cols-3 gap-3">

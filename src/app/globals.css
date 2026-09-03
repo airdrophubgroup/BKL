@@ -183,3 +183,70 @@ input[type='range']::-webkit-slider-thumb {
     0 0 60px rgba(108, 71, 255, 0.12),
     0 6px 30px rgba(0, 0, 0, 0.4);
 }
+
+/* ===== Premium gender avatars ===== */
+
+/* Gentle float */
+@keyframes avatar-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.avatar-float {
+  animation: avatar-float 4.5s ease-in-out infinite;
+}
+
+/* Rotating conic ring */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.avatar-ring-spin {
+  background: conic-gradient(
+    from 0deg,
+    rgba(255, 255, 255, 0) 0deg,
+    rgba(255, 255, 255, 0.85) 90deg,
+    rgba(255, 255, 255, 0.35) 160deg,
+    rgba(255, 255, 255, 0) 230deg
+  );
+  animation: spin-slow 5s linear infinite;
+}
+
+/* Soft light sweep across the avatar */
+@keyframes avatar-shine {
+  0% { transform: translateX(-120%) skewX(-15deg); }
+  45%, 100% { transform: translateX(220%) skewX(-15deg); }
+}
+.avatar-shine {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.22) 50%,
+    transparent 100%
+  );
+  width: 60%;
+  height: 150%;
+  animation: avatar-shine 3.6s ease-in-out infinite;
+}
+
+/* 3D-ish drop shadow for emoji */
+.avatar-emoji-3d {
+  filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.4));
+}
+
+/* ===== Voice level meter ===== */
+@keyframes voice-bar {
+  0%, 100% { transform: scaleY(0.25); }
+  50% { transform: scaleY(1); }
+}
+.voice-bar {
+  transform-origin: center;
+  animation: voice-bar 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes slow-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+.slow-pulse {
+  animation: slow-pulse 2.2s ease-in-out infinite;
+}

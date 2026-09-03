@@ -7,6 +7,7 @@ import { findRandomMatch } from '@/lib/matching';
 import { useDailyUsage, FREE_DAILY_SECONDS } from '@/lib/hooks';
 import type { Profile, Subscription, TierNumber, FilterPrefs, MatchCandidate } from '@/lib/types';
 import SubscriptionBadge from './SubscriptionBadge';
+import UserAvatar from './UserAvatar';
 import {
   Video,
   VideoOff,
@@ -16,7 +17,6 @@ import {
   ChevronRight,
   Flag,
   Settings,
-  Gift,
   X,
 } from 'lucide-react';
 
@@ -42,10 +42,16 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(true);
 
+  // Voice level (mic activity 0..1) for the in-call voice test
+  const [micLevel, setMicLevel] = useState(0);
+  const speaking = micLevel > 0.25;
+
   // Match state
   const [status, setStatus] = useState<'connecting' | 'searching' | 'matched' | 'ended'>('connecting');
   const [currentMatch, setCurrentMatch] = useState<MatchCandidate | null>(null);
   const [remoteUserTier, setRemoteUserTier] = useState<TierNumber | 0>(0);
+  // Becomes true once the peer's real video stream starts playing (production WebRTC).
+  const [remoteStreamActive, setRemoteStreamActive] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showReport, setShowReport] = useState(false);
 
@@ -127,6 +133,7 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
     setStatus('searching');
     setCurrentMatch(null);
     setRemoteUserTier(0);
+    setRemoteStreamActive(false);
 
     // Simulate a brief search delay
     await new Promise((r) => setTimeout(r, 1500 + Math.random() * 2000));
@@ -177,6 +184,54 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
     }
   };
 
+  // ---- Voice activity meter (live audio level from local mic) ----
+  useEffect(() => {
+    if (!localStream || !audioEnabled) {
+      setMicLevel(0);
+      return;
+    }
+    if (localStream.getAudioTracks().length === 0) return;
+
+    let raf = 0;
+    let ctx: AudioContext | null = null;
+    let stopped = false;
+
+    const start = async () => {
+      try {
+        const AC =
+          window.AudioContext ||
+          (window as any).webkitAudioContext;
+        ctx = new AC();
+        await ctx.resume();
+        const source = ctx.createMediaStreamSource(localStream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+        const data = new Uint8Array(analyser.frequencyBinCount);
+
+        const tick = () => {
+          if (stopped) return;
+          analyser.getByteFrequencyData(data);
+          let sum = 0;
+          for (let i = 0; i < data.length; i++) sum += data[i];
+          const level = Math.min(1, sum / data.length / 60);
+          setMicLevel(level);
+          raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+      } catch (e) {
+        console.warn('[voice] meter unavailable', e);
+      }
+    };
+    start();
+
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(raf);
+      ctx?.close().catch(() => {});
+    };
+  }, [localStream, audioEnabled]);
+
   return (
     <motion.div
       className="fixed inset-0 bg-midnight-950 z-50 flex flex-col"
@@ -191,7 +246,9 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
           autoPlay
           playsInline
           muted
-          className="w-full h-full object-cover"
+          onPlaying={() => setRemoteStreamActive(true)}
+          onWaiting={() => setRemoteStreamActive(false)}
+          className={`w-full h-full object-cover transition-opacity duration-500 ${remoteStreamActive ? 'opacity-100' : 'opacity-0'}`}
         />
         {/* Placeholder when no remote stream */}
         {status !== 'matched' && (
@@ -212,6 +269,48 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
               )}
             </div>
           </div>
+        )}
+
+        {/* Matched user's premium avatar scene — shown until their live video attaches */}
+        {currentMatch && status === 'matched' && !remoteStreamActive && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 flex flex-col items-center justify-center pb-10"
+          >
+            {/* Ambient glow + connection rings */}
+            <div className="absolute w-72 h-72 rounded-full bg-accent-600/10 blur-3xl slow-pulse pointer-events-none" />
+            <div className="relative">
+              <div
+                className="absolute inset-0 rounded-full border border-accent-400/25 animate-ping"
+                style={{ animationDuration: '2.2s' }}
+              />
+              <div
+                className="absolute -inset-3 rounded-full border border-white/10 animate-ping"
+                style={{ animationDuration: '2.2s', animationDelay: '0.5s' }}
+              />
+              <UserAvatar
+                gender={currentMatch.gender}
+                src={currentMatch.avatar_url}
+                size="2xl"
+                animate
+                online
+              />
+            </div>
+            <p className="relative text-white text-lg font-bold mt-5 drop-shadow-lg">
+              {currentMatch.username}
+            </p>
+            <p className="relative text-white/50 text-xs mt-1">
+              {currentMatch.country !== 'ZZ' ? currentMatch.country : 'Global'} · Age {currentMatch.age}
+            </p>
+            <div className="relative flex items-center gap-2 mt-4 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              <span className="text-[10px] text-white/60 font-medium uppercase tracking-wider">
+                Connecting live video…
+              </span>
+            </div>
+          </motion.div>
         )}
 
         {/* Remote username overlay — badge shows only during active call */}
@@ -236,8 +335,12 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
         )}
       </div>
 
-      {/* Local video (PiP) */}
-      <div className="absolute bottom-28 right-4 z-10 w-28 h-36 rounded-2xl overflow-hidden border-2 border-white/20 shadow-xl">
+      {/* Local video (PiP) — avatar fallback + live voice meter */}
+      <div
+        className={`absolute bottom-28 right-4 z-10 w-28 h-36 rounded-2xl overflow-hidden border-2 shadow-xl transition-all duration-300 ${
+          speaking ? 'border-accent-400 shadow-[0_0_18px_rgba(124,58,237,0.35)]' : 'border-white/20'
+        }`}
+      >
         <video
           ref={localVideoRef}
           autoPlay
@@ -246,11 +349,50 @@ export default function VideoCallRoom({ profile, subscription, onEnd }: VideoCal
           className="w-full h-full object-cover mirror"
           style={{ transform: 'scaleX(-1)' }}
         />
+
+        {/* Avatar backdrop when camera is off */}
         {!videoEnabled && (
-          <div className="absolute inset-0 bg-midnight-800 flex items-center justify-center">
-            <VideoOff className="w-6 h-6 text-white/40" />
+          <div className="absolute inset-0 bg-gradient-to-b from-midnight-800 to-midnight-950 flex items-center justify-center">
+            <UserAvatar gender={profile.gender} src={profile.avatar_url} size="lg" animate={false} />
+            <span className="absolute bottom-6 flex items-center gap-1 text-[8px] text-white/30 font-semibold uppercase tracking-wider">
+              <VideoOff className="w-3 h-3" /> Camera off
+            </span>
           </div>
         )}
+
+        {/* Mic state chip */}
+        <div
+          className={`absolute top-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-full backdrop-blur-md border ${
+            !audioEnabled
+              ? 'bg-red-500/25 border-red-400/30 text-red-300'
+              : speaking
+              ? 'bg-accent-600/40 border-accent-400/40 text-white'
+              : 'bg-black/40 border-white/15 text-white/60'
+          }`}
+        >
+          {audioEnabled ? <Mic className="w-2.5 h-2.5" /> : <MicOff className="w-2.5 h-2.5" />}
+          <span className="text-[7px] font-bold uppercase tracking-wider">
+            {!audioEnabled ? 'Muted' : speaking ? 'Live' : 'Mic'}
+          </span>
+        </div>
+
+        {/* Live voice-level equalizer */}
+        <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex items-end gap-[3px] px-1.5 py-1 rounded-md bg-black/45 backdrop-blur-md">
+          {[0.35, 0.65, 0.95, 0.6, 0.3].map((mult, i) => {
+            const h = !audioEnabled
+              ? 2
+              : Math.max(2, Math.round(micLevel * 12 * mult) + (micLevel > 0.03 ? 1 : 0));
+            return (
+              <span
+                key={i}
+                className={`w-[3px] rounded-full transition-all duration-150 ${
+                  speaking ? 'bg-accent-300' : 'bg-white/35'
+                }`}
+                style={{ height: h }}
+              />
+            );
+          })}
+        </div>
       </div>
 
       {/* Filter panel (tier >= 2 only) */}

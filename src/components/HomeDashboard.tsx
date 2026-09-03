@@ -8,6 +8,7 @@ import type { Subscription, TierNumber } from '@/lib/types';
 import { TIERS } from '@/lib/types';
 import { Video, Zap, Crown, Sparkles, ChevronRight, Play, Pause } from 'lucide-react';
 import BklTokenBalance from './BklTokenBalance';
+import UserAvatar from './UserAvatar';
 
 // =============================================================
 // Types
@@ -16,6 +17,8 @@ interface HomeDashboardProps {
   subscription: Subscription | null;
   username: string;
   userId: string;
+  gender?: string | null;
+  avatarUrl?: string | null;
   onStartCall: () => void;
   onGoToPlans: () => void;
 }
@@ -347,6 +350,8 @@ export default function HomeDashboard({
   subscription,
   username,
   userId,
+  gender,
+  avatarUrl,
   onStartCall,
   onGoToPlans,
 }: HomeDashboardProps) {
@@ -394,7 +399,10 @@ export default function HomeDashboard({
         transition={{ delay: 0.05 }}
         className="relative px-4 pb-3 text-center"
       >
-        <p className="text-white/40 text-[10px] uppercase tracking-widest">Welcome back,</p>
+        <div className="flex justify-center">
+          <UserAvatar gender={gender} src={avatarUrl} size="lg" online />
+        </div>
+        <p className="text-white/40 text-[10px] uppercase tracking-widest mt-2">Welcome back,</p>
         <div className="flex items-center justify-center gap-2 mt-0.5">
           <p className="text-white text-lg font-bold">{username}</p>
         </div>

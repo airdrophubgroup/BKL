@@ -98,6 +98,8 @@ export default function HomePage() {
               subscription={subscription}
               username={profile.username}
               userId={profile.id}
+              gender={profile.gender}
+              avatarUrl={profile.avatar_url}
               onStartCall={() => setInCall(true)}
               onGoToPlans={() => setActiveTab('plans')}
             />
