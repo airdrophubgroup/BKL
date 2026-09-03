@@ -88,7 +88,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
   }
 
-  // ---- Verify payment (skip only for dev-mode 0x hashes) ----
+  // ---- Verify payment ----
+  // Real MiniKit payments carry tx_ ids and are verified against the
+  // Worldcoin Developer API. Legacy 0x hashes are ONLY accepted when dev
+  // mode is explicitly enabled — in production they are rejected so a fake
+  // hash can never mint a free pass.
+  const isDevHash = txId.startsWith('0x');
+  const devModeEnabled = process.env.NEXT_PUBLIC_ALLOW_DEV_MODE === 'true';
+  if (isDevHash && !devModeEnabled) {
+    return NextResponse.json(
+      { error: 'Invalid transaction id (dev hashes are disabled in production)' },
+      { status: 400 }
+    );
+  }
+
   if (txId.startsWith('tx_')) {
     const APP_ID = process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID;
     const API_KEY = process.env.DEV_PORTAL_API_KEY;
