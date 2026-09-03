@@ -8,7 +8,7 @@ const TIER_PRICE: Record<number, number> = { 1: 2, 2: 5, 3: 10 };
 const TIER_DURATION_DAYS: Record<number, number> = { 1: 7, 2: 7, 3: 7 };
 
 /** Accepts MiniKit transaction ids (tx_...) and dev-mode hashes (0x...) */
-export function isPaymentId(id: string): boolean {
+function isPaymentId(id: string): boolean {
   return /^tx_[A-Za-z0-9]+$/.test(id) || /^0x[0-9a-fA-F]{64}$/.test(id);
 }
 
